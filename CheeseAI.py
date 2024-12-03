@@ -1,175 +1,188 @@
+import os
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-# Load the cheese data
-df = pd.read_csv("C:/Users/withe/OneDrive/Desktop/CheeseAIProjectPrePrototype/cheeses.csv")
-
-# Display the info of the data
-print("\nBase .csv file info\n")
-print(df.info())
-print("\n")
 
 
-
-# Convert all boolean columns to string before concatenation
-df['vegetarian'] = df['vegetarian'].astype(str)
-df['vegan'] = df['vegan'].astype(str)
-
-# Fill missing values with empty strings for the features we're interested in (cheese,url,region,family,fat_content,calcium_content,synonyms,alt_spellings,producers omitted)
-df['milk'] = df['milk'].fillna('')
-df['country'] = df['country'].fillna('')
-df['region'] = df['region'].fillna('')
-df['family'] = df['family'].fillna('')
-df['type'] = df['type'].fillna('')
-df['texture'] = df['texture'].fillna('')
-df['rind'] = df['rind'].fillna('')
-df['color'] = df['color'].fillna('')
-df['flavor'] = df['flavor'].fillna('')
-df['aroma'] = df['aroma'].fillna('')
-
-# Combine important features into a single 'features' column
-df['features'] = (df['milk']
-    + ' ' + df['country']
-    + ' ' + df['region']
-    + ' ' + df['family']
-    + ' ' + df['type']
-    + ' ' + df['texture']
-    + ' ' + df['rind']
-    + ' ' + df['color']
-    + ' ' + df['flavor']
-    + ' ' + df['aroma']
-    + ' ' + df['vegetarian']
-    + ' ' + df['vegan'])
-
-# Display the combined features for the first few rows
-print("\nCombined features head:\n")
-print(df[['cheese', 'features']].head())
-print("\n")
+# Load dataset
+def load_dataset(file_name="cheeses.csv"):
+    script_dir = os.path.dirname(os.path.abspath(__file__))  # Get the directory where the script is located
+    csv_file_path = os.path.join(script_dir, file_name)  # Construct the path to the CSV file
+    df = pd.read_csv(csv_file_path)
+    return df
 
 
 
+# Preprocess dataset for feature extraction
+def preprocess_data(df):
+    attributes_to_process = [
+        'milk', 'country', 'region', 'family', 'type', 
+        'texture', 'rind', 'color', 'flavor', 'aroma'
+    ]
 
+    # Fill missing values or 'NA' with 'Unknown' for all attributes
+    for attr in attributes_to_process:
+        df[attr] = df[attr].replace(['NA', ''], 'Unknown').fillna('Unknown')
 
+    # Convert boolean columns to string for concatenation
+    df['vegetarian'] = df['vegetarian'].astype(str)
+    df['vegan'] = df['vegan'].astype(str)
 
-
-# Cosine Similarity: This method measures the similarity between two items based on their attributes (for example, flavor, milk type).
-# Uses TF-IDF Vectorizer to convert the combined text features into numerical values, and cosine similarity to measure how similar the cheeses are to the user's preferences.
-
-# Initialize the TF-IDF Vectorizer
-tfidf = TfidfVectorizer()
-
-# Fit and transform the 'features' column into a matrix of numerical values
-tfidf_matrix = tfidf.fit_transform(df['features'])
-
-# Calculate the cosine similarity between all cheeses
-cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
-
-# Function to recommend new cheeses based on the name of a preferred cheese
-def recommend_cheese(user_input_cheese, cosine_sim=cosine_sim):
+    # Combine important features into a single 'features' column
+    df['features'] = df[attributes_to_process].apply(lambda row: ' '.join(row.values), axis=1)
+    df['features'] += ' ' + df['vegetarian'] + ' ' + df['vegan']  # Optionally include 'vegetarian' and 'vegan'
     
-    # Get the index of the cheese that matches the user_input_cheese
-    idx = df.index[df['cheese'] == user_input_cheese].tolist()[0]
-    
-    # Get the pairwise similarity scores for all cheeses with the input cheese
-    sim_scores = list(enumerate(cosine_sim[idx]))
-    
-    # Sort the cheeses by similarity scores
-    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
-    
-    # Get the indices of the most similar cheeses
-    sim_indices = [i[0] for i in sim_scores[1:6]]  # Top 5 similar cheeses
-    
-    # Return the top 5 most similar cheeses
-    return df['cheese'].iloc[sim_indices]
+    return df
 
 
 
-def recommend_based_on_preferences(milk_pref, country_pref, region_pref, family_pref, type_pref, texture_pref, rind_pref, flavor_pref, aroma_pref, vegetarian_pref, vegan_pref):
-    # Initialize an empty list to store the attributes that are not 'Any'
-    user_pref_list = []
-    
-    # Add attributes to the list only if they are not 'Any'
-    if milk_pref != 'Any':
-        user_pref_list.append(milk_pref)
-    if country_pref != 'Any':
-        user_pref_list.append(country_pref)
-    if region_pref != 'Any':
-        user_pref_list.append(region_pref)
-    if family_pref != 'Any':
-        user_pref_list.append(family_pref)
-    if type_pref != 'Any':
-        user_pref_list.append(type_pref)
-    if texture_pref != 'Any':
-        user_pref_list.append(texture_pref)
-    if rind_pref != 'Any':
-        user_pref_list.append(rind_pref)
-    if flavor_pref != 'Any':
-        user_pref_list.append(flavor_pref)
-    if aroma_pref != 'Any':
-        user_pref_list.append(aroma_pref)
-    if vegetarian_pref != 'Any':
-        user_pref_list.append(vegetarian_pref)
-    if vegan_pref != 'Any':
-        user_pref_list.append(vegan_pref)
-    
-    # Combine all non-'Any' preferences into a single string for the user
+
+# Initialize TF-IDF vectorizer and compute cosine similarity
+def compute_cosine_similarity(df):
+    tfidf = TfidfVectorizer()
+    tfidf_matrix = tfidf.fit_transform(df['features'])
+    cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
+    return tfidf, cosine_sim, tfidf_matrix
+
+
+
+# Recommend cheeses based on user preferences
+def recommend_based_on_preferences(df, tfidf, tfidf_matrix, preferences):
+    user_pref_list = [value for key, value in preferences.items() if value != 'Any']
     user_preferences = ' '.join(user_pref_list)
     
-    # Transform the user's preferences into a tf-idf matrix
+    # Transform user preferences into TF-IDF space
     user_tfidf = tfidf.transform([user_preferences])
-    
-    # Calculate the cosine similarity between the user's preferences and all cheeses
     sim_scores = cosine_similarity(user_tfidf, tfidf_matrix)
     
-    # Sort the cheeses by similarity scores
+    # Enumerate similarities
     sim_scores = list(enumerate(sim_scores[0]))
-    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
+    sim_indices = [i[0] for i in sim_scores]  # All indices
     
-    # Get the indices of the most similar cheeses
-    sim_indices = [i[0] for i in sim_scores[:5]]  # Top 5 recommendations
+    # Compute the number of matching attributes
+    recommendations = []
+    for sim_idx in sim_indices:
+        cheese_name = df['cheese'].iloc[sim_idx]
+        shared_attributes = [
+            f"{attr}: {df.iloc[sim_idx][attr]}" 
+            for attr, value in preferences.items() 
+            if value != 'Any' and value in df.iloc[sim_idx][attr]
+        ]
+        # Only consider cheeses that match at least one attribute
+        if shared_attributes:
+            recommendations.append((cheese_name, shared_attributes))
     
-    # Return the top 5 most similar cheeses
-    return df['cheese'].iloc[sim_indices]
+    # Sort by the number of shared attributes (descending), then by cosine similarity
+    recommendations = sorted(recommendations, key=lambda x: (-len(x[1]), sim_scores[df.index[df['cheese'] == x[0]].tolist()[0]][1]))
+
+    # Return the top 5 recommendations
+    return recommendations[:5]
+
+
+
+# Group cheeses by a specific attribute type
+def group_cheeses_by_attribute(df, attribute):
+    if attribute not in df.columns:
+        return f"Attribute '{attribute}' not found in the dataset."
+
+    grouped_cheeses = {}
+    
+    for _, row in df.iterrows():
+        # Multi-value attributes are stored in quotes, split while respecting quotes
+        attribute_values = [value.strip() for value in row[attribute].split(', ') if value != 'Unknown']
+        for value in attribute_values:
+            if value not in grouped_cheeses:
+                grouped_cheeses[value] = []
+            grouped_cheeses[value].append(row['cheese'])
+    
+    # Sort the cheeses in each group for better readability
+    for group in grouped_cheeses:
+        grouped_cheeses[group] = sorted(grouped_cheeses[group])
+    
+    return grouped_cheeses
 
 
 
 
+# Example usage function for recommending based on preferences
+def example_recommendations():
+    # Example user preferences
+    preferences = {
+        'milk': 'cow',
+        'country': 'Any',
+        'region': 'Any',
+        'family': 'Blue',
+        'type': 'semi-soft',
+        'texture': 'creamy',
+        'rind': 'Any',
+        'flavor': 'sweet',
+        'aroma': 'buttery',
+        'vegetarian': 'TRUE',
+        'vegan': 'Any'
+    }
 
-# Example usage: recommending cheeses similar to 'Abbaye de Belloc'
-preferred_cheese = 'Abbaye de Belloc'
+    # Load and preprocess dataset
+    df = load_dataset()
+    df = preprocess_data(df)
 
-print("\nRecommend cheese similar to another cheese:\n")
-print(recommend_cheese(preferred_cheese))
-print("\n")
+    # Initialize and compute similarity
+    tfidf, cosine_sim, tfidf_matrix = compute_cosine_similarity(df)
 
-
-
-# Example: User inputs their preferences
-milk_input = 'cow'
-country_input = 'Any'  # The user has no preference for country
-region_input = 'Any'   # No region preference
-family_input = 'Blue'
-type_input = 'semi-soft'
-texture_input = 'creamy'
-rind_input = 'Any'     # No preference for rind
-flavor_input = 'sweet'
-aroma_input = 'buttery'
-vegetarian_input = 'TRUE'
-vegan_input = 'Any'    # No preference for vegan
-
-# Get recommendations based on the inputs
-recommended_cheeses = recommend_based_on_preferences(milk_input, country_input, region_input, family_input, type_input, texture_input, rind_input, flavor_input, aroma_input, vegetarian_input, vegan_input)
-print("\nRecommended cheeses based preferences:\n")
-print(recommended_cheeses)
-print('\n')
-
-
-
-
-
+    # Get recommendations based on preferences
+    recommendations = recommend_based_on_preferences(df, tfidf, tfidf_matrix, preferences)
+    
+    # Display the recommendations
+    print("\nRecommended cheeses based on preferences:\n")
+    for cheese, shared_attrs in recommendations:
+        print(f"- {cheese} (shared attributes: {', '.join(shared_attrs)})")
 
 
+
+# Example usage function for grouping cheeses by attribute
+def example_grouping():
+    # Example attribute type
+    attribute_type = "milk"  # Change to other attributes like "country", "texture", etc.
+    
+    # Load and preprocess dataset
+    df = load_dataset()
+    df = preprocess_data(df)
+
+
+
+
+    # Group cheeses by attribute
+    grouped_cheeses = group_cheeses_by_attribute(df, attribute_type)
+
+    # Display the grouped cheeses
+    print(f"\nCheeses grouped by '{attribute_type}':\n")
+    for group, cheeses in grouped_cheeses.items():
+        print(f"{group}: {', '.join(cheeses)}")
+
+
+
+# Run examples
+if __name__ == "__main__":
+    example_recommendations()  # Display example recommendations
+    example_grouping()  # Display example grouping
+
+
+
+
+# Program Notes:
+
+# UI
+    # Dropdown boxes? (or at least some kind of list the user can select from) that includes all values displayed from cheeses.csv file
+        # Currently case-sensitive.
+        # Optionally add some feature that allows multiple attribute selections if the desired cheese is multi-valued (e.g., has goat AND cow cheese)
+
+# Website should call to the first 3 initialization functions upon website initialization.
+# Then, once the dataset file is read, data is processed, and processed data is composed into a cosine similarity function, all calls to recommend or group the cheeses should be able to work off it.
+# Upon clicking a submit button, the website should send user-defined parameters to the functions (attributes or attribute type) in the same format as seen in the example functions.
+# Website should take the function outputs and write them to a textbox or label.
+
+
+# Dataset Notes:
 
 #1187 total cheeses with 19 total attributes
 #1. Omit Cheese because it is the actual cheese rather than an attribute.
@@ -193,37 +206,5 @@ print('\n')
 #17. Omit Synonyms because it obviously has nothing to do with its attributes.
 #18. Omit Alt_spellings because it obviously has nothing to do with its attributes.
 #19. Omit producers because there are 787 non-null values, with 319 of them unique. While, a decent amount of the cheeses have a producer value, each producer only produces 2 cheeses on average.
-
-
-#Things to Note:
-#The program is counting lists of attributes as a single attribute (e.g., 'semi-soft, artisan, brined' is a single "type" attribute that likely isn't shared by any other cheese, but each individual attribute might.).
-    #Can be fixed with the following after all "df['milk'] = df['milk'].fillna('')" statements towards start of code.
-        ##Split multi-attribute fields into individual components
-        #df['milk'] = df['milk'].apply(lambda x: ' '.join(x.split(',')))
-        #df['country'] = df['country'].apply(lambda x: ' '.join(x.split(',')))
-        #df['type'] = df['type'].apply(lambda x: ' '.join(x.split(',')))
-        #df['texture'] = df['texture'].apply(lambda x: ' '.join(x.split(',')))
-        #df['flavor'] = df['flavor'].apply(lambda x: ' '.join(x.split(',')))
-        #df['aroma'] = df['aroma'].apply(lambda x: ' '.join(x.split(',')))
-        #...
-
-        #However, this may make cheeses with more attributes rarer to be recommended. This is because there will be even more attributes that will make it more dissimilar from every other cheese. (maybe)
-            #e.g.   User preference: "brined"
-            #       Cheese 1: "artisan, brined" (2 matching words)
-            #       Cheese 2: "semi-soft, artisan, brined" (3 words, only 2 match)
-            #Cheese 1 might score slightly higher than Cheese 2, even though Cheese 2 should still be a good match.
-
-            #This can be band-aid resolved by boosting match scores. This ensures that cheeses with a higher number of matching attributes are rewarded.
-                #If a cheese has many attributes but matches the user’s preferences on key attributes (like "brined"), it will still receive a boost and rank higher.
-
-#Producer value can come back with the "Any" option, since most people would likely pick any.
-
-#Give program good UI
-
-#Dropdown boxes? (or at least some kind of list the user can select from) that includes all values displayed from cheeses.csv file
-    #What about multi-valued attributes? (discussed in point above)
-    #Program doesn't necessarily discriminate between attributes. "cow" under "milk" would have no difference than if "cow" were to somehow be under "color"
-
-#Make program output the reasons it picked the similar cheeses (what attributes did it share with your preferences?)
 
 
