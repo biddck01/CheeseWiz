@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recommend Cheese</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .header {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            width: 150px;
+        }
+
+        .header img {
+            width: 40px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .header img:hover {
+            transform: scale(1.1);
+        }
+
+        h1 {
+            margin-top: 80px;
+            text-align: center;
+        }
+
+        .form-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 80%;
+            max-width: 600px;
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        label {
+            font-weight: bold;
+        }
+
+        select {
+            padding: 8px;
+            width: 100%;
+            margin-top: 5px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .button-container {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .button-container img {
+            width: 40px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .button-container img:hover {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- Profile and Sign Out Buttons -->
+    <div class="header">
+        <a href="profile.html">
+            <img src="profile.png" alt="Profile Button">
+        </a>
+        <a href="index.html">
+            <img src="signout.png" alt="Sign Out Button">
+        </a>
+    </div>
+
+    <h1>Recommend Cheese</h1>
+
+    <div class="form-container">
+        <div class="form-group">
+            <label for="milk">Milk</label>
+            <select id="milk" name="milk">
+                <option value="na">N/A</option>
+                <option value="cow">Cow</option>
+                <option value="goat">Goat</option>
+                <option value="sheep">Sheep</option>
+                <option value="buffalo">Buffalo</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="country">Country</label>
+            <select id="country" name="country">
+                <option value="na">N/A</option>
+                <option value="france">France</option>
+                <option value="italy">Italy</option>
+                <option value="spain">Spain</option>
+                <option value="us">USA</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="region">Region</label>
+            <select id="region" name="region">
+                <option value="na">N/A</option>
+                <option value="brittany">Brittany</option>
+                <option value="tuscany">Tuscany</option>
+                <option value="castilla">Castilla</option>
+                <option value="vermont">Vermont</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="type">Type</label>
+            <select id="type" name="type">
+                <option value="na">N/A</option>
+                <option value="soft">Soft</option>
+                <option value="semi-soft">Semi-soft</option>
+                <option value="hard">Hard</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="texture">Texture</label>
+            <select id="texture" name="texture">
+                <option value="na">N/A</option>
+                <option value="creamy">Creamy</option>
+                <option value="crumbly">Crumbly</option>
+                <option value="firm">Firm</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="rind">Rind</label>
+            <select id="rind" name="rind">
+                <option value="na">N/A</option>
+                <option value="natural">Natural</option>
+                <option value="washed">Washed</option>
+                <option value="bloomy">Bloomy</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="color">Color</label>
+            <select id="color" name="color">
+                <option value="na">N/A</option>
+                <option value="white">White</option>
+                <option value="yellow">Yellow</option>
+                <option value="orange">Orange</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="flavor">Flavor</label>
+            <select id="flavor" name="flavor">
+                <option value="na">N/A</option>
+                <option value="mild">Mild</option>
+                <option value="sharp">Sharp</option>
+                <option value="nutty">Nutty</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="aroma">Aroma</label>
+            <select id="aroma" name="aroma">
+                <option value="na">N/A</option>
+                <option value="fragrant">Fragrant</option>
+                <option value="pungent">Pungent</option>
+                <option value="earthy">Earthy</option>
+            </select>
+        </div>
+
+        <!-- Next Button (Image) -->
+        <div class="button-container">
+            <a href="recommendresults.html">
+                <img src="next.png" alt="Next Button">
+            </a>
+        </div>
+    </div>
+</body>
+</html>
+

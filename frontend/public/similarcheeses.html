@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Similar Cheeses</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .header {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            width: 150px;
+        }
+
+        .header img {
+            width: 40px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .header img:hover {
+            transform: scale(1.1);
+        }
+
+        h1 {
+            margin-top: 80px;
+            text-align: center;
+        }
+
+        .result-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 80%;
+            max-width: 600px;
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        .cheese-display {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #eee;
+            border-radius: 8px;
+            font-size: 20px;
+            color: #333;
+        }
+
+        .button-container {
+            margin-top: 40px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .button-container img {
+            width: 40px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .button-container img:hover {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- Profile and Sign Out Buttons -->
+    <div class="header">
+        <a href="profile.html">
+            <img src="profile.png" alt="Profile Button">
+        </a>
+        <a href="index.html">
+            <img src="signout.png" alt="Sign Out Button">
+        </a>
+    </div>
+
+    <h1>Here are similar cheeses to <strong>[Cheese Name]</strong>:</h1>
+
+    <div class="result-container">
+        <!-- Placeholder for similar cheeses -->
+        <div class="cheese-display">
+            <!-- List of similar cheeses goes here -->
+            <p><em>Cheese suggestions will appear here.</em></p>
+        </div>
+
+        <!-- Buttons to navigate -->
+        <div class="button-container">
+            <a href="recommendresults.html">
+                <img src="back.png" alt="Back Button">
+            </a>
+            <a href="index.html">
+                <img src="home.png" alt="Home Button">
+            </a>
+        </div>
+    </div>
+</body>
+</html>
