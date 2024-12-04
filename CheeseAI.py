@@ -3,6 +3,45 @@ import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 
+# Load the cheese data
+df = pd.read_csv("cheeses.csv")
+
+# Display the info of the data
+print("\nBase .csv file info\n")
+print(df.info())
+print("\n")
+
+# Remove columns  
+df.drop(columns=['fat_content'])
+df.drop(columns=['calcium_content'])
+df.drop(columns=['alt_spellings'])
+df.drop(columns=['family'])
+df.drop(columns=['producers'])
+df.drop(columns=['synonyms'])
+
+#Remove duplicates
+df.drop_duplicates()
+
+# Remove rows with null columns
+df.dropna(subset=['texture'], inplace = True)
+df.dropna(subset=['milk'], inplace = True)
+df.dropna(subset=['country'], inplace = True)
+df.dropna(subset=['rind'], inplace = True)
+df.dropna(subset=['color'], inplace = True)
+df.dropna(subset=['region'], inplace = True)
+df.dropna(subset=['aroma'], inplace = True)
+df.dropna(subset=['type'], inplace = True)
+df.dropna(subset=['flavor'], inplace = True)
+
+# Count of null values in the dataset
+print("\n")
+print("Count of null values in the dataset")
+null_counts = df.isnull().sum()
+print(null_counts)
+
+print("\n")
+print("After cleaning the data we get:")
+print(df.info())
 
 
 # Load dataset
@@ -19,7 +58,7 @@ def preprocess_data(df):
     attributes_to_process = [
         'milk', 'country', 'region', 'family', 'type', 
         'texture', 'rind', 'color', 'flavor', 'aroma'
-    ]
+    ] 
 
     # Fill missing values or 'NA' with 'Unknown' for all attributes
     for attr in attributes_to_process:
