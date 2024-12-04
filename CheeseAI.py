@@ -33,6 +33,13 @@ df.dropna(subset=['aroma'], inplace = True)
 df.dropna(subset=['type'], inplace = True)
 df.dropna(subset=['flavor'], inplace = True)
 
+# Fill null values in vegan column
+df['vegan'] = df['vegan'].where(
+    df['vegan'].notnull(), 
+    df['milk'].str.contains('plant', case=False, na=False) # True if 'milk' contains "plant", otherwise False
+)
+
+
 # Count of null values in the dataset
 print("\n")
 print("Count of null values in the dataset")
@@ -42,7 +49,7 @@ print(null_counts)
 print("\n")
 print("After cleaning the data we get:")
 print(df.info())
-
+df.head(10)
 
 # Load dataset
 def load_dataset(file_name="cheeses.csv"):
