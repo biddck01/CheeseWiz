@@ -1,67 +1,30 @@
-import os
 import pandas as pd
+import os
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-# Load the cheese data
-df = pd.read_csv("cheeses.csv")
-
-# Display the info of the data
-print("\nBase .csv file info\n")
-print(df.info())
-print("\n")
-
-# Remove columns  
-df.drop(columns=['fat_content'])
-df.drop(columns=['calcium_content'])
-df.drop(columns=['alt_spellings'])
-df.drop(columns=['family'])
-df.drop(columns=['producers'])
-df.drop(columns=['synonyms'])
-
-#Remove duplicates
-df.drop_duplicates()
-
-# Remove rows with null columns
-df.dropna(subset=['texture'], inplace = True)
-df.dropna(subset=['milk'], inplace = True)
-df.dropna(subset=['country'], inplace = True)
-df.dropna(subset=['rind'], inplace = True)
-df.dropna(subset=['color'], inplace = True)
-df.dropna(subset=['region'], inplace = True)
-df.dropna(subset=['aroma'], inplace = True)
-df.dropna(subset=['type'], inplace = True)
-df.dropna(subset=['flavor'], inplace = True)
-
-# Fill null values in vegan column
-df['vegan'] = df['vegan'].where(
-    df['vegan'].notnull(), 
-    df['milk'].str.contains('plant', case=False, na=False) # True if 'milk' contains "plant", otherwise False
-)
 
 
-# Count of null values in the dataset
-print("\n")
-print("Count of null values in the dataset")
-null_counts = df.isnull().sum()
-print(null_counts)
+# Global variable for the dataset
+df = None
 
-print("\n")
-print("After cleaning the data we get:")
-print(df.info())
-df.head(10)
+
+
+
 
 # Load dataset
-def load_dataset(file_name="cheeses.csv"):
-    script_dir = os.path.dirname(os.path.abspath(__file__))  # Get the directory where the script is located
-    csv_file_path = os.path.join(script_dir, file_name)  # Construct the path to the CSV file
-    df = pd.read_csv(csv_file_path)
+def load_dataset():
+    global df  # Declare df as global
+    df = pd.read_csv("cheeses.csv")
     return df
 
 
 
+
+
 # Preprocess dataset for feature extraction
-def preprocess_data(df):
+def preprocess_data():
+    global df  # Declare df as global
     attributes_to_process = [
         'milk', 'country', 'region', 'family', 'type', 
         'texture', 'rind', 'color', 'flavor', 'aroma'
@@ -84,8 +47,10 @@ def preprocess_data(df):
 
 
 
+
 # Initialize TF-IDF vectorizer and compute cosine similarity
-def compute_cosine_similarity(df):
+def compute_cosine_similarity():
+    global df  # Declare df as global
     tfidf = TfidfVectorizer()
     tfidf_matrix = tfidf.fit_transform(df['features'])
     cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
@@ -93,11 +58,17 @@ def compute_cosine_similarity(df):
 
 
 
+
+
 # Recommend cheeses based on user preferences
-def recommend_based_on_preferences(df, tfidf, tfidf_matrix, preferences):
-    user_pref_list = [value for key, value in preferences.items() if value != 'Any']
+def recommend_based_on_preferences(preferences):
+    global df  # Declare df as global
+    user_pref_list = [value for key, value in preferences.items() if value != 'N/A']
     user_preferences = ' '.join(user_pref_list)
-    
+
+    # Call compute_cosine_similarity() to get tfidf and cosine_sim
+    tfidf, cosine_sim, tfidf_matrix = compute_cosine_similarity()
+
     # Transform user preferences into TF-IDF space
     user_tfidf = tfidf.transform([user_preferences])
     sim_scores = cosine_similarity(user_tfidf, tfidf_matrix)
@@ -113,7 +84,7 @@ def recommend_based_on_preferences(df, tfidf, tfidf_matrix, preferences):
         shared_attributes = [
             f"{attr}: {df.iloc[sim_idx][attr]}" 
             for attr, value in preferences.items() 
-            if value != 'Any' and value in df.iloc[sim_idx][attr]
+            if value != 'N/A' and value in df.iloc[sim_idx][attr]
         ]
         # Only consider cheeses that match at least one attribute
         if shared_attributes:
@@ -127,8 +98,11 @@ def recommend_based_on_preferences(df, tfidf, tfidf_matrix, preferences):
 
 
 
+
+
 # Group cheeses by a specific attribute type
-def group_cheeses_by_attribute(df, attribute):
+def group_cheeses_by_attribute(attribute):
+    global df  # Declare df as global
     if attribute not in df.columns:
         return f"Attribute '{attribute}' not found in the dataset."
 
@@ -151,32 +125,26 @@ def group_cheeses_by_attribute(df, attribute):
 
 
 
+
 # Example usage function for recommending based on preferences
 def example_recommendations():
     # Example user preferences
     preferences = {
         'milk': 'cow',
-        'country': 'Any',
-        'region': 'Any',
+        'country': 'N/A',
+        'region': 'N/A',
         'family': 'Blue',
         'type': 'semi-soft',
         'texture': 'creamy',
-        'rind': 'Any',
+        'rind': 'N/A',
         'flavor': 'sweet',
         'aroma': 'buttery',
         'vegetarian': 'TRUE',
-        'vegan': 'Any'
+        'vegan': 'N/A'
     }
 
-    # Load and preprocess dataset
-    df = load_dataset()
-    df = preprocess_data(df)
-
-    # Initialize and compute similarity
-    tfidf, cosine_sim, tfidf_matrix = compute_cosine_similarity(df)
-
     # Get recommendations based on preferences
-    recommendations = recommend_based_on_preferences(df, tfidf, tfidf_matrix, preferences)
+    recommendations = recommend_based_on_preferences(preferences)
     
     # Display the recommendations
     print("\nRecommended cheeses based on preferences:\n")
@@ -185,20 +153,15 @@ def example_recommendations():
 
 
 
+
+
 # Example usage function for grouping cheeses by attribute
 def example_grouping():
     # Example attribute type
     attribute_type = "milk"  # Change to other attributes like "country", "texture", etc.
     
-    # Load and preprocess dataset
-    df = load_dataset()
-    df = preprocess_data(df)
-
-
-
-
     # Group cheeses by attribute
-    grouped_cheeses = group_cheeses_by_attribute(df, attribute_type)
+    grouped_cheeses = group_cheeses_by_attribute(attribute_type)
 
     # Display the grouped cheeses
     print(f"\nCheeses grouped by '{attribute_type}':\n")
@@ -207,25 +170,104 @@ def example_grouping():
 
 
 
+
+
 # Run examples
 if __name__ == "__main__":
+    
+    # Load and preprocess dataset
+    load_dataset()
+    preprocess_data()
+
     example_recommendations()  # Display example recommendations
     example_grouping()  # Display example grouping
 
 
 
 
+
+
+"""
 # Program Notes:
+"""
 
-# UI
-    # Dropdown boxes? (or at least some kind of list the user can select from) that includes all values displayed from cheeses.csv file
-        # Currently case-sensitive.
-        # Optionally add some feature that allows multiple attribute selections if the desired cheese is multi-valued (e.g., has goat AND cow cheese)
+"""
+INITIALIZATION:
+Upon Initialization of the first page, Call the following functions:
 
-# Website should call to the first 3 initialization functions upon website initialization.
-# Then, once the dataset file is read, data is processed, and processed data is composed into a cosine similarity function, all calls to recommend or group the cheeses should be able to work off it.
-# Upon clicking a submit button, the website should send user-defined parameters to the functions (attributes or attribute type) in the same format as seen in the example functions.
-# Website should take the function outputs and write them to a textbox or label.
+    load_dataset()
+    preprocess_data()
+
+    This will load the dataset into a filereader then process/clean the data.
+"""
+
+
+
+"""
+LOGIN/REGISTER:
+Enter a username and password into login screen. 
+   If it exists in a file, go to homepage.
+   If it doesn't, throw exception.
+
+On sign up page, enter any username or password to create one.
+   If username already exists in file, throw exception.
+   If not, add username/password to file.
+"""
+
+
+
+"""
+BOTH RECOMMENDING + CLASSIFYING
+Ensure all attributes and attribute types are listed as options (case sensitive).
+    I recommend writing code to return every attribute and attribute type (separating each attribute for multi-valued attributes. This part may be more complicated than it sounds)
+"""
+
+
+
+"""
+GROUP/CLASSIFY CHEESES:
+When user selects an attribute type, it should be sent as the parameter to the following function:
+
+    grouped_cheeses = group_cheeses_by_attribute(attribute_type)
+
+        This returns a long string containing all cheeses sorted into groups based on that attribute type.
+
+        You can follow the parameter and return formatting established by the example_grouping() function.
+
+!!! Currently, the backend code does not support allowing multiple attribute types to be selected at a time.
+    Pick 1 of 2 options to resolve this:
+    1. Allow code to sort based on 2 different attribute types.
+    2. Only allow 1 selection from the website page.
+
+    I recommend 2 (only allowing 1 selection) because there is already a LONG string that returns from sorting based on a single attribute type.
+    Allowing multiple selections would make it longer.
+"""
+
+
+
+"""
+RECOMMEND CHEESES:
+When a user selects attributes, they should be sent as the parameter to the following function:
+
+    recommendations = recommend_based_on_preferences(preferences)
+
+        This returns a list of 5 similar cheeses along with the attributes that makes them similar.
+
+        You can follow the parameter and return formatting established by the example_recommendations() function.
+"""
+
+
+
+"""
+BACKEND MAIN FUNCTION
+Upon completion of the program, delete the following functions since they were just for examples:
+if __name__ == "__main__"
+def example_recommendations()
+def example_grouping()
+"""
+
+
+
 
 
 # Dataset Notes:
