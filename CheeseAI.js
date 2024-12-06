@@ -1,5 +1,7 @@
 /*
 TO RUN:
+(first, see if you can just run it as-is in case you actually don't need any of this)
+
 Check if NodeJS is installed using "node -v" in the terminal.
     If NodeJS is not installed, install it.
 
@@ -22,12 +24,8 @@ const csv = require('csv-parser');
 const natural = require('natural');
 const { TfIdf } = natural;
 
-
-
 // Global variable for the dataset
 let df = [];
-
-
 
 // Load dataset
 function loadDataset() {
@@ -44,15 +42,12 @@ function loadDataset() {
     });
 }
 
-
-
-
-
 // Preprocess dataset for feature extraction
 function preprocessData() {
     const attributesToProcess = [
-        'milk', 'country', 'region', 'family', 'type', 
-        'texture', 'rind', 'color', 'flavor', 'aroma'
+        'milk', 'country', 'type', 
+        'texture', 'rind', 'flavor', 
+        'aroma', 'vegetarian'
     ];
 
     // Fill missing values or 'NA' with 'Unknown' for all attributes
@@ -65,18 +60,13 @@ function preprocessData() {
 
         // Convert boolean columns to string for concatenation
         row['vegetarian'] = String(row['vegetarian']);
-        row['vegan'] = String(row['vegan']);
 
         // Combine important features into a single 'features' column
-        row['features'] = attributesToProcess.map(attr => row[attr]).join(' ') + ' ' + row['vegetarian'] + ' ' + row['vegan'];
+        row['features'] = attributesToProcess.map(attr => row[attr]).join(' ');
     });
 
     return df;
 }
-
-
-
-
 
 // Manually compute cosine similarity between two vectors
 function cosineSimilarity(vec1, vec2) {
@@ -115,13 +105,11 @@ function computeCosineSimilarity() {
     return { tfidf, cosineSim };
 }
 
-
-
-
-
 // Recommend cheeses based on user preferences
 function recommendBasedOnPreferences(preferences) {
-    const userPrefList = Object.keys(preferences).map(key => preferences[key] !== 'N/A' ? preferences[key] : '').filter(Boolean);
+    const userPrefList = Object.keys(preferences)
+        .map(key => preferences[key] !== 'N/A' ? preferences[key] : '')
+        .filter(Boolean);
     const userPreferences = userPrefList.join(' ');
 
     // Compute cosine similarity
@@ -132,37 +120,42 @@ function recommendBasedOnPreferences(preferences) {
     userTfidf.addDocument(userPreferences);
     const userTfidfList = userTfidf.listTerms(0).map(term => term.tf);
 
-    const simScores = [];
-    df.forEach((_, idx) => {
+    const recommendations = [];
+
+    df.forEach((row, idx) => {
+        // Count exact matches
+        const exactMatches = Object.keys(preferences).reduce((count, attr) => {
+            if (preferences[attr] !== 'N/A' && row[attr] === preferences[attr]) {
+                return count + 1;
+            }
+            return count;
+        }, 0);
+
+        // Calculate cosine similarity
         const similarity = cosineSimilarity(userTfidfList, tfidf.listTerms(idx).map(term => term.tf));
-        simScores.push({ index: idx, score: similarity });
+
+        // Store cheese details with scores
+        recommendations.push({
+            cheeseName: row['cheese'],
+            sharedAttributes: Object.keys(preferences)
+                .filter(attr => preferences[attr] !== 'N/A' && row[attr] === preferences[attr])
+                .map(attr => `${attr}: ${row[attr]}`),
+            exactMatches,
+            similarity
+        });
     });
 
-    // Sort by cosine similarity (descending)
-    simScores.sort((a, b) => b.score - a.score);
-
-    // Gather recommendations
-    const recommendations = [];
-    simScores.forEach(({ index }) => {
-        const cheeseName = df[index]['cheese'];
-        const sharedAttributes = Object.keys(preferences).map(attr => {
-            if (preferences[attr] !== 'N/A' && df[index][attr].includes(preferences[attr])) {
-                return `${attr}: ${df[index][attr]}`;
-            }
-        }).filter(Boolean);
-
-        if (sharedAttributes.length > 0) {
-            recommendations.push({ cheeseName, sharedAttributes });
+    // Sort recommendations by exact matches first, then cosine similarity
+    recommendations.sort((a, b) => {
+        if (b.exactMatches !== a.exactMatches) {
+            return b.exactMatches - a.exactMatches; // Prioritize more exact matches
         }
+        return b.similarity - a.similarity; // Then prioritize higher similarity
     });
 
     // Return the top 5 recommendations
     return recommendations.slice(0, 5);
 }
-
-
-
-
 
 // Group cheeses by a specific attribute type
 function groupCheesesByAttribute(attribute) {
@@ -190,10 +183,6 @@ function groupCheesesByAttribute(attribute) {
     return groupedCheeses;
 }
 
-
-
-
-
 // Write output to HTML file
 function writeToHtmlFile(recommendations, groupedCheeses) {
     let htmlContent = `<!DOCTYPE html>
@@ -220,10 +209,6 @@ function writeToHtmlFile(recommendations, groupedCheeses) {
     console.log('Output written to cheese_output.html');
 }
 
-
-
-
-
 // Example usage
 (async function () {
     await loadDataset();
@@ -232,15 +217,12 @@ function writeToHtmlFile(recommendations, groupedCheeses) {
     const preferences = {
         'milk': 'cow',
         'country': 'N/A',
-        'region': 'N/A',
-        'family': 'Blue',
         'type': 'semi-soft',
         'texture': 'creamy',
         'rind': 'N/A',
         'flavor': 'sweet',
         'aroma': 'buttery',
-        'vegetarian': 'TRUE',
-        'vegan': 'N/A'
+        'vegetarian': 'TRUE'
     };
     const recommendations = recommendBasedOnPreferences(preferences);
 
@@ -249,6 +231,7 @@ function writeToHtmlFile(recommendations, groupedCheeses) {
 
     writeToHtmlFile(recommendations, groupedCheeses);
 })();
+
 
 
 
