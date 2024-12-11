@@ -72,20 +72,6 @@ function login(username, password) {
 // Main function
 function main() {
     loadUsersFromFile();
-
-    // Test creating users
-    createUser("Alice", "password123");
-    createUser("Bob", "securepassword");
-    createUser("Alice", "newpassword"); // Duplicate username
-
-    // Test logging in
-    login("Alice", "password123"); // Valid login
-    login("Alice", "wrongpassword"); // Invalid login
-    login("Charlie", "doesnotexist"); // Username doesn't exist
-
-    // Print all users for verification
-    console.log("\nAll Users:");
-    users.forEach(user => console.log(`Username: ${user.username}, Password: ${user.password}`));
 }
 
 // Run the program
