@@ -5,9 +5,10 @@ const filename = "UserInfo.txt";
 
 // User class
 class User {
-    constructor(username, password) {
+    constructor(username, password, history = []) {
         this.username = username;
         this.password = password;
+        this.history = history;
     }
 }
 
@@ -25,36 +26,13 @@ function loadUsersFromFile() {
         const data = fs.readFileSync(filePath, 'utf-8');
         const lines = data.split('\n').filter(line => line.trim() !== '');
         lines.forEach(line => {
-            const [username, password] = line.split(',');
-            users.push(new User(username, password));
+            const [username, password, historyString] = line.split(',');
+            const history = historyString ? historyString.split('|') : [];
+            users.push(new User(username, password, history));
         });
         console.log("User data loaded from file.");
     } catch (err) {
         console.error("Error loading user data:", err.message);
-    }
-}
-
-// Check if a username is already taken
-function isUsernameTaken(username) {
-    return users.some(user => user.username === username);
-}
-
-// Create a new user
-function createUser(username, password) {
-    if (isUsernameTaken(username)) {
-        console.log("Username already exists. Please choose a different username.");
-        return;
-    }
-    const newUser = new User(username, password);
-    users.push(newUser);
-
-    // Append user to file
-    try {
-        const filePath = path.resolve(__dirname, filename);
-        fs.appendFileSync(filePath, `${username},${password}\n`);
-        console.log(`User '${username}' created successfully!`);
-    } catch (err) {
-        console.error("Error saving user data:", err.message);
     }
 }
 
@@ -63,16 +41,68 @@ function login(username, password) {
     const user = users.find(user => user.username === username && user.password === password);
     if (user) {
         console.log(`Welcome back, ${username}!`);
-        return true;
+        return user.username; // Return the username for further operations
     }
     console.log("Invalid username or password.");
-    return false;
+    return null; // Return null if login fails
+}
+
+// Save information (e.g., search history) for a user
+function saveInformation(username, info) {
+    const user = users.find(user => user.username === username);
+    if (!user) {
+        console.log(`User '${username}' not found.`);
+        return null;
+    }
+
+    // Append the info to the user's history
+    user.history.push(info);
+
+    // Update the file
+    try {
+        const filePath = path.resolve(__dirname, filename);
+        const updatedData = users.map(user => {
+            const historyString = user.history.join('|'); // Convert history to string
+            return `${user.username},${user.password},${historyString}`;
+        }).join('\n');
+        fs.writeFileSync(filePath, updatedData, 'utf-8');
+        console.log(`Information '${info}' saved for user '${username}'.`);
+    } catch (err) {
+        console.error("Error updating user information:", err.message);
+    }
+}
+
+// Load and display a user's history
+function loadHistory(username) {
+    const user = users.find(user => user.username === username);
+    if (!user) {
+        console.log(`User '${username}' not found.`);
+        return;
+    }
+
+    console.log(`History for '${username}':`);
+    if (user.history.length === 0) {
+        console.log("No history available.");
+    } 
+    else {
+        user.history.forEach((item, index) => {
+            console.log(`${index + 1}. ${item}`);
+        });
+    }
 }
 
 // Main function
 function main() {
     loadUsersFromFile();
+
+    const username = login("Alice", "password123");
+    if (username) { 
+        saveInformation(username, "search history");
+        loadHistory(username);
+    } 
+    else {
+        console.log("Login failed. Cannot save or load information.");
+    }
 }
 
-// Run the program
 main();
