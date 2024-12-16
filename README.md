@@ -1,6 +1,12 @@
 For developer use:
 
-Ensure python is installed using "python --version" in terminal. If it is not installed, install it from the Microsoft Store, then restart VSCode.
-Run in the terminal: "pip install pandas scikit-learn".
-Install the python extension for VSCode.
-(optional) install Rainbow CSV extension for VSCode to color-code dataset.
+To run: 
+(If on windows, navigate to "CS TestCode/CS TestCode") 
+Check if NodeJS is installed using "node -v" in the terminal. 
+If NodeJS is not installed, install it. 
+Check if npm is installed using "npm -v" in the terminal.
+If npm is not installed, install it. 
+If node -v gives an error, type the following code into the terminal: Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass. This allows scripts to run only for the current session. 
+Enter "npm install express csv-parser natural" into the terminal to install the proper libraries. 
+Run the script using "node UserLogin.js" in the terminal. 
+Then, open URL given in terminal. 
