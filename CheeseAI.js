@@ -1,33 +1,11 @@
-/*
-TO RUN:
-(first, see if you can just run it as-is in case you actually don't need any of this)
-
-Check if NodeJS is installed using "node -v" in the terminal.
-    If NodeJS is not installed, install it.
-
-Check if npm is installed using "npm -v" in the terminal.
-    If npm is not installed, install it.
-    If if node -v gives an error, type the following code into the terminal:
-        Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-            This allows scripts to run only for the current session.
-
-Enter "npm install csv-parser natural" into the terminal to install the proper libraries.
-
-Run the script using "node CheeseAI.js" in the terminal.
-
-View the .html output file using "./cheese_output.html" in the terminal.
-*/ 
-
-
 const fs = require('fs');
 const csv = require('csv-parser');
 const natural = require('natural');
 const { TfIdf } = natural;
 
-// Global variable for the dataset
-let df = [];
+let df = []; // Dataset
 
-// Load dataset
+// Load dataset function
 function loadDataset() {
     return new Promise((resolve, reject) => {
         const data = [];
@@ -44,13 +22,8 @@ function loadDataset() {
 
 // Preprocess dataset for feature extraction
 function preprocessData() {
-    const attributesToProcess = [
-        'milk', 'country', 'type', 
-        'texture', 'rind', 'flavor', 
-        'aroma', 'vegetarian'
-    ];
+    const attributesToProcess = ['milk', 'country', 'type', 'texture', 'rind', 'flavor', 'aroma', 'color'];
 
-    // Fill missing values or 'NA' with 'Unknown' for all attributes
     df.forEach((row) => {
         attributesToProcess.forEach((attr) => {
             if (!row[attr] || row[attr] === 'NA') {
@@ -58,14 +31,8 @@ function preprocessData() {
             }
         });
 
-        // Convert boolean columns to string for concatenation
-        row['vegetarian'] = String(row['vegetarian']);
-
-        // Combine important features into a single 'features' column
         row['features'] = attributesToProcess.map(attr => row[attr]).join(' ');
     });
-
-    return df;
 }
 
 // Manually compute cosine similarity between two vectors
@@ -73,7 +40,7 @@ function cosineSimilarity(vec1, vec2) {
     const dotProduct = vec1.reduce((acc, val, i) => acc + val * vec2[i], 0);
     const magnitude1 = Math.sqrt(vec1.reduce((acc, val) => acc + val * val, 0));
     const magnitude2 = Math.sqrt(vec2.reduce((acc, val) => acc + val * val, 0));
-    
+
     if (magnitude1 && magnitude2) {
         return dotProduct / (magnitude1 * magnitude2);
     } else {
@@ -81,90 +48,97 @@ function cosineSimilarity(vec1, vec2) {
     }
 }
 
-// Initialize TF-IDF vectorizer and compute cosine similarity
-function computeCosineSimilarity() {
-    const tfidf = new TfIdf();
-
-    // Add documents for the cheeses
-    df.forEach((row) => {
-        tfidf.addDocument(row['features']);
-    });
-
-    // Calculate the cosine similarity matrix between all documents
-    const cosineSim = [];
-    for (let i = 0; i < df.length; i++) {
-        cosineSim[i] = [];
-        for (let j = 0; j < df.length; j++) {
-            const termsI = tfidf.listTerms(i).map(term => term.tf);
-            const termsJ = tfidf.listTerms(j).map(term => term.tf);
-            const similarity = cosineSimilarity(termsI, termsJ);
-            cosineSim[i].push(similarity);
-        }
+// Fisher-Yates shuffle to randomize the recommendations
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]]; // Swap elements
     }
-
-    return { tfidf, cosineSim };
+    return array;
 }
+
 
 // Recommend cheeses based on user preferences
 function recommendBasedOnPreferences(preferences) {
     const userPrefList = Object.keys(preferences)
-        .map(key => preferences[key] !== 'N/A' ? preferences[key] : '')
-        .filter(Boolean);
+        .map(key => preferences[key].toLowerCase()) // Convert user preferences to lowercase
+        .filter(Boolean); // Filter out empty preferences
+
     const userPreferences = userPrefList.join(' ');
 
-    // Compute cosine similarity
-    const { tfidf, cosineSim } = computeCosineSimilarity();
+    const tfidf = new TfIdf();
+    df.forEach((row) => tfidf.addDocument(row['features']));
 
-    // Transform user preferences into TF-IDF space
     const userTfidf = new TfIdf();
     userTfidf.addDocument(userPreferences);
     const userTfidfList = userTfidf.listTerms(0).map(term => term.tf);
 
-    const recommendations = [];
+    // First filter by user preferences
+    let filteredCheeses = df.filter((row) => {
+        const rowMilk = row['milk'] ? row['milk'].toLowerCase() : '';
+        const rowType = row['type'] ? row['type'].toLowerCase() : '';
+        const rowTexture = row['texture'] ? row['texture'].toLowerCase().split(', ') : [];
+        const rowFlavor = row['flavor'] ? row['flavor'].toLowerCase().split(', ') : [];
 
-    df.forEach((row, idx) => {
-        // Count exact matches
-        const exactMatches = Object.keys(preferences).reduce((count, attr) => {
-            if (preferences[attr] !== 'N/A' && row[attr] === preferences[attr]) {
-                return count + 1;
-            }
-            return count;
-        }, 0);
-
-        // Calculate cosine similarity
-        const similarity = cosineSimilarity(userTfidfList, tfidf.listTerms(idx).map(term => term.tf));
-
-        // Store cheese details with scores
-        recommendations.push({
-            cheeseName: row['cheese'],
-            sharedAttributes: Object.keys(preferences)
-                .filter(attr => preferences[attr] !== 'N/A' && row[attr] === preferences[attr])
-                .map(attr => `${attr}: ${row[attr]}`),
-            exactMatches,
-            similarity
-        });
-    });
-
-    // Sort recommendations by exact matches first, then cosine similarity
-    recommendations.sort((a, b) => {
-        if (b.exactMatches !== a.exactMatches) {
-            return b.exactMatches - a.exactMatches; // Prioritize more exact matches
+        // Prioritize non-Unknown entries
+        if (rowMilk === 'unknown' || rowType === 'unknown' || rowTexture.includes('unknown') || rowFlavor.includes('unknown')) {
+            return false;
         }
-        return b.similarity - a.similarity; // Then prioritize higher similarity
+
+        // Filter based on user preferences
+        if (preferences.milk && !rowMilk.includes(preferences.milk.toLowerCase())) {
+            return false;
+        }
+
+        if (preferences.type && !rowType.includes(preferences.type.toLowerCase())) {
+            return false;
+        }
+
+        if (preferences.texture && !rowTexture.includes(preferences.texture.toLowerCase())) {
+            return false;
+        }
+
+        if (preferences.flavor && !rowFlavor.includes(preferences.flavor.toLowerCase())) {
+            return false;
+        }
+
+        return true; // Only return cheeses that match the preferences
     });
+
+    // Now calculate cosine similarity on the filtered list
+    filteredCheeses = filteredCheeses.map((row) => {
+        const similarity = cosineSimilarity(userTfidfList, tfidf.listTerms(df.indexOf(row)).map(term => term.tf));
+
+        return {
+            cheeseName: row['cheese'],
+            country: row['country'],
+            milk: row['milk'],
+            type: row['type'],
+            texture: row['texture'],
+            rind: row['rind'],
+            flavor: row['flavor'],
+            aroma: row['aroma'],
+            color: row['color'],
+            similarity: similarity
+        };
+    });
+
+    // Sort by similarity (still prioritize user preferences)
+    filteredCheeses.sort((a, b) => b.similarity - a.similarity);
+
+    // Shuffle to introduce randomness but keep prioritized cheeses
+    const shuffledRecommendations = shuffleArray(filteredCheeses);
 
     // Return the top 5 recommendations
-    return recommendations.slice(0, 5);
+    return shuffledRecommendations.slice(0, 5);
 }
 
-// Group cheeses by a specific attribute type
+
+
+
+// Group cheeses by an attribute
 function groupCheesesByAttribute(attribute) {
-    if (!df[0].hasOwnProperty(attribute)) {
-        return `Attribute '${attribute}' not found in the dataset.`;
-    }
-
     const groupedCheeses = {};
-
     df.forEach((row) => {
         const attributeValues = row[attribute].split(', ').map(value => value.trim()).filter(value => value !== 'Unknown');
         attributeValues.forEach((value) => {
@@ -174,140 +148,14 @@ function groupCheesesByAttribute(attribute) {
             groupedCheeses[value].push(row['cheese']);
         });
     });
-
-    // Sort the cheeses in each group for better readability
-    Object.keys(groupedCheeses).forEach((group) => {
-        groupedCheeses[group] = groupedCheeses[group].sort();
-    });
-
     return groupedCheeses;
 }
 
-// Write output to HTML file
-function writeToHtmlFile(recommendations, groupedCheeses) {
-    let htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-    <title>Cheese Recommendations and Groupings</title>
-</head>
-<body>
-    <h1>Cheese Recommendations</h1>
-    <ul>
-        ${recommendations.map(r => `<li>${r.cheeseName} (${r.sharedAttributes.join(', ')})</li>`).join('')}
-    </ul>
-    <h1>Cheeses Grouped by Attribute</h1>
-    ${Object.entries(groupedCheeses).map(([key, value]) => `
-        <h2>${key}</h2>
-        <ul>
-            ${value.map(cheese => `<li>${cheese}</li>`).join('')}
-        </ul>
-    `).join('')}
-</body>
-</html>`;
+// Load and preprocess the dataset on startup
+loadDataset().then(() => preprocessData());
 
-    fs.writeFileSync('cheese_output.html', htmlContent);
-    console.log('Output written to cheese_output.html');
-}
-
-// Example usage
-(async function () {
-    await loadDataset();
-    preprocessData();
-
-    const preferences = {
-        'milk': 'cow',
-        'country': 'N/A',
-        'type': 'semi-soft',
-        'texture': 'creamy',
-        'rind': 'N/A',
-        'flavor': 'sweet',
-        'aroma': 'buttery',
-        'vegetarian': 'TRUE'
-    };
-    const recommendations = recommendBasedOnPreferences(preferences);
-
-    const attributeType = 'milk'; // Change as needed
-    const groupedCheeses = groupCheesesByAttribute(attributeType);
-
-    writeToHtmlFile(recommendations, groupedCheeses);
-})();
-
-
-
-
-
-/*
-WHAT NEEDS TO BE DONE:
-
-INITIALIZATION:
-Upon Initialization of the first page, Call the following functions:
-
-    load_dataset()
-    preprocess_data()
-
-    This will load the dataset into a filereader then process/clean the data.
-
-
-
-
-
-LOGIN/REGISTER:
-Enter a username and password into login screen. 
-   If it exists in a file, go to homepage.
-   If it doesn't, throw exception.
-
-On sign up page, enter any username or password to create one.
-   If username already exists in file, throw exception.
-   If not, add username/password to file.
-
-
-
-
-
-BOTH RECOMMENDING + CLASSIFYING
-Ensure all attributes and attribute types are listed as options (case sensitive).
-    (Cayla has all options listed out in discord)
-
-
-
-
-
-RECOMMEND CHEESES:
-When a user selects attributes, they should be sent as the parameter to the following function:
-
-    recommendations = recommendBasedOnPreferences(preferences);
-
-        This returns a list of 5 similar cheeses along with the attributes that makes them similar.
-
-        You can follow the parameter and return formatting established by the main method.
-
-
-
-
-GROUP/CLASSIFY CHEESES:
-When user selects an attribute type, it should be sent as the parameter to the following function:
-
-    groupedCheeses = groupCheesesByAttribute(attributeType);
-
-        This returns a long string containing all cheeses sorted into groups based on that attribute type.
-
-        You can follow the parameter and return formatting established by the main method.
-
-!!! Currently, the backend code does not support allowing multiple attribute types to be selected at a time.
-    To fix this, only allow 1 selection from the website page.
-    
-    
-
-    
-    
-CURRENT WRITING TO FILE:
-Currently, the program calls to the following function which writes to a new html file called "cheese_output.html"
-    function writeToHtmlFile(recommendations, groupedCheeses)
-
-
-
-
-
-CURRENT BACKEND MAIN FUNCTION
-Upon completion of the program, delete the examples used in the main function.
-*/
+// Export functions to be used in other modules
+module.exports = {
+    recommendBasedOnPreferences,
+    groupCheesesByAttribute
+};
